@@ -2,10 +2,14 @@ package com.sukhbeersingh.projectmanager.project;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.List;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 
 @Entity
 public class Project {
@@ -15,6 +19,12 @@ public class Project {
   private String description;
   private Date start_date;
   private Date end_date;
+
+  @OneToMany
+  private List<Component> components;
+
+  @Enumerated(EnumType.STRING)
+  private ProjectStatus status = ProjectStatus.NOT_STARTED;
 
   Project() {}
 
@@ -64,6 +74,60 @@ public class Project {
   public void setEnd_date(Date end_date) {
     this.end_date = end_date;
   }
+
+  public List<Component> getComponents() {
+    return components;
+  }
+
+  public void setComponents(List<Component> components) {
+      this.components = components;
+      updateStatus();
+  }
+
+  public ProjectStatus getStatus() {
+      return status;
+  }
+
+  public void setStatus(ProjectStatus status) {
+      this.status = status;
+  }
+
+  public void startProject() {
+    this.status = ProjectStatus.IN_PROGRESS;
+    for (Component component : components) {
+        if (component.getProgress() == ComponentProgress.NOT_STARTED) {
+            component.setProgress(ComponentProgress.IN_PROGRESS);
+        }
+    }
+    updateStatus();
+  }
+
+  public void updateStatus() {
+    boolean allCompleted = true;
+    boolean hasConflict = false;
+    boolean hasBlocked = false;
+
+    for (Component component : components) {
+        if (component.getAvailability() == ComponentAvailability.CONFLICTED) {
+            hasConflict = true;
+        }
+        if (component.getProgress() == ComponentProgress.BLOCKED) {
+            hasBlocked = true;
+        }
+        if (component.getProgress() != ComponentProgress.COMPLETED) {
+            allCompleted = false;
+        }
+    }
+
+    if (hasConflict || hasBlocked) {
+        this.status = ProjectStatus.BLOCKED;
+    } else if (allCompleted) {
+        this.status = ProjectStatus.COMPLETED;
+    } else {
+        this.status = ProjectStatus.IN_PROGRESS;
+    }
+  }
+
 
   @Override
   public boolean equals(Object o) {
